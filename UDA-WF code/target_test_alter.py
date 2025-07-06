@@ -3,9 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 import numpy
 from network.DFnet import DFnetBase, DFnetcls # UDA-WF
-# from network.newDFnet import DFnetBase, DFnetcls # DF
-# from network.DFnet_trpil import DFnetBase, DFnetcls
-from loss import ADDALoss, crossEntropy
+from loss import crossEntropy
 from tqdm import tqdm
 from d2l import torch as d2l
 import numpy as np
@@ -21,33 +19,22 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import  AdaBoostClassifier, BaggingClassifier,StackingClassifier
 from sklearn.metrics import accuracy_score, roc_auc_score 
 from sklearn.multiclass import OneVsOneClassifier, OneVsRestClassifier
-from network.cosineLinear import CosineLinear
-from network.AE import AutoEncoder
 # torch.cuda.manual_seed(42)
 # torch.cuda.manual_seed(114514)
 
 def load_data(feature, label): #数据生成
     '''
-    返回值: 数据生成器, 原始数据
+    dataset generator
     '''
-    # sourcepath = params["source_data"]
-
-    # source_data = np.load(sourcepath)
-    # source = source_data['x'].reshape(-1, 1, 5000)
     target = torch.tensor(feature, dtype=torch.float32).reshape(-1, 256)
     label = torch.tensor(label, dtype=torch.float32)
-    # source = DatastLoader(source)
     targetDataset =  data.TensorDataset(target, label)
 
     return data.DataLoader(targetDataset, shuffle=True, batch_size=128, drop_last=True)
 
 def kNN_train(X_train, y_train,params,n_num = 1):
     print('kNN training data shape: ', X_train.shape)
-    
     knn = KNeighborsClassifier(n_neighbors=n_num,algorithm='auto',weights='distance')
-    # knn = OneVsOneClassifier(estimator= knn, n_jobs=-1)
-    # knn = AdaBoostClassifier()
-    # y_train = np.argwhere(y_train == 1)[:,1].reshape(-1)
     knn.fit(X_train, y_train)
 
     return knn
@@ -60,28 +47,15 @@ def kNN_accuracy(X_train, y_train, X_test, y_test, params):
     
     for i in range(1,10):
         knnModel = kNN_train(X_train, y_train, params,i)
-        # y_test = np.argwhere(y_test == 1)[:,1].reshape(-1)
-  # Top-1
         acc_knn = accuracy_score(y_test, knnModel.predict(X_test))
         print(acc_knn)
-        # y_test = np.eye(len(np.unique(y_test)))[y_test]
-        # y_pred = knnModel.predict(X_test)-1
-        # y_pred = np.eye(len(np.unique(y_pred)))[y_pred]
         roauc = roc_auc_score(y_test,knnModel.predict(X_test),average='macro')
-        
         acc_knn = float("{0:.15f}".format(round(acc_knn, 6)))
-        # print(acc_knn)
         acc.append(acc_knn)
         auc.append(roauc)
-    # print(acc)
-
-    # # Top-5
-    # acc_knn_top5 = computeTopN(5, knnModel, X_test, y_test)
-    # print('KNN accuracy Top1 = ', acc_knn_top1, '\tKNN accuracy Top5 = ', acc_knn_top5)
-    # return acc_knn_top1, acc_knn_top5
     return acc, auc
 
-def train_epoch(train_iter, test_iter, targetBase,params): # 测试KNN模型
+def train_epoch(train_iter, test_iter, targetBase,params):
     features_traget = []
     y_t = []
     features_test = []
@@ -129,7 +103,7 @@ def fintuning(target_iter, targetModel, clsLayer, loss, optimizer, params):
 
         loop.set_postfix(loss = accmulator[0]/ accmulator[1], acc = accmulator[2]/ accmulator[3])
 
-def test(test_iter, targetModel, clsLayer, loss): # 测试MLP的模
+def test(test_iter, targetModel, clsLayer, loss):
     accmulator = d2l.Accumulator(4)
     loop = tqdm(test_iter, desc="test")
     labels = []
@@ -165,11 +139,10 @@ def train(params, train_iter, test_iter, lr):
     clsLayer = nn.Sequential(
         nn.Linear(256, params["numclass"], bias= False)
     )
-    # clsLayer = CosineLinear(90)
     clsLayer.to(params['device'])
     clsLayer.apply(weights_init)
     param_group = []
-    for k, v in targetModel.named_parameters(): # 获取netBase的参数
+    for k, v in targetModel.named_parameters():
         # v.requires_grad = False
         param_group.append({'params':v, 'lr':lr})
     for k, v in clsLayer.named_parameters():
@@ -204,7 +177,7 @@ def train(params, train_iter, test_iter, lr):
     clsLayer.apply(weights_init)
     clsLayer.load_state_dict(torch.load(params['saveClspath']))
     param_group = []
-    for k, v in targetModel.named_parameters(): # 获取netBase的参数
+    for k, v in targetModel.named_parameters():
         param_group.append({'params':v, 'lr':lr*0.1})
     for k, v in clsLayer.named_parameters():
         param_group.append({'params':v, 'lr':lr*0.01})
@@ -239,35 +212,18 @@ params = {}
 device = d2l.try_gpu()
 params['device'] = device
 
-# 数据集地址
+# dataset setting
 params['target_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/target_processed/WF15.npz"
-# params['target_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/DFDataset/DF95_sampled20.npz"
-# params['target_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/WangDataset/Wang100_sampled20.npz"
-# params['target_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/AWF/AWF20.npz"
-# params['target_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/AFDataset/AF100_sampled20.npz"
 params['test_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/target_test/WF_test.npz"
-# params['test_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/target_test/DF95_sampled70.npz"
-# params['test_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/target_test/Wang100_sampled70.npz"
-# params['test_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/target_test/WF_test.npz"
-# params['test_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/target_test/AF100_sampled70.npz"
-# params['test_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/target_test/AWF_test.npz"
-# params["val_data"] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/wordpress.npz"
 train_iter = dataLoaderSource(params["target_data"], 128)
 test_iter = dataLoaderSource(params["test_data"], 128)
-# val_iter = dataLoaderSource(params["val_data"], 1)
 
 
-#训练
-params["target_model"] = "/home/siyuwang/pythoncode/TranferLearning/targetBestSEModel.pth"
-# params["target_model"] = "/home/siyuwang/pythoncode/TranferLearning/Best_model/souce_train/bestBaseSE25.pth"
-# params["target_cls"] = "/home/siyuwang/pythoncode/TranferLearning/Best_model/souce_train/bestCls100.pth"
-# params["target_model"] = "/home/siyuwang/pythoncode/TranferLearning/Best_model/TF/bestbase2500.pth"
-# params["target_model"] = "/home/siyuwang/pythoncode/TranferLearning/Best_model/netCLR/NetCLR_epoch_400.pth"
-# params["target_model"] = "/home/siyuwang/pythoncode/TranferLearning/Best_model/TF/bestbase.pth"
-# params["target_model"] = "/home/siyuwang/pythoncode/TranferLearning/Best_model/souce_train/bestBase75.pth"
+#train setting
+params["target_model"] = "XXX.pth"
 params["saveBasepath"] = "targetBestModelBase.pth"
 params["saveClspath"] = "targetBestModelCls.pth"
-params['epoch'] = 100
+params['epoch'] = 80
 params["numclass"] = 90
 
 acc_list = []
