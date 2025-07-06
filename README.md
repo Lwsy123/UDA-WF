@@ -15,7 +15,7 @@ UDA-WF code/
 │   └── weightedCrossEntropy.py # calculating the cross-entropy between pseudo-label and predicted label,
 │                                 and optimizing the cross-entropy by pseudo-label weights.
 ├── network/
-│   └── DFnet # including DFnetBase model （feature extractor） and DFnetCls (classification layer)
+│   └── DFnet                    # including DFnetBase model （feature extractor）and DFnetCls (classification layer)
 │
 ├── utils/
 │   ├── dataLoaderTotal.py       # loading closed-world dataset.
