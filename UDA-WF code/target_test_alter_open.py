@@ -25,7 +25,7 @@ import warnings
 from xgboost.sklearn import XGBClassifier
 warnings.filterwarnings("ignore")
 
-def load_data(feature, label): #数据生成
+def load_data(feature, label): #dataset generator
     '''
     dataset generator
     '''
@@ -35,60 +35,6 @@ def load_data(feature, label): #数据生成
 
     return data.DataLoader(targetDataset, shuffle=True, batch_size=128, drop_last=True)
 
-
-def kNN_train(X_train, y_train,params,n_num = 1):
-    knn = KNeighborsClassifier(n_neighbors=n_num,algorithm='auto',weights='distance')
-    knn.fit(X_train, y_train)
-
-    return knn
-
-
-
-def kNN_accuracy(X_train, y_train, X_test, y_test, params):
-    acc=[]
-    best_eval = None
-    best_f1 = 0
-    best_auc = 0
-    for i in range(1,5):
-        knnModel = kNN_train(X_train, y_train, params, i)
-        precision,recall,f1 =  evluation(knnModel.predict(X_test), y_test)
-        y_score = knnModel.predict(X_test)
-        roauc = roc_auc_score(y_test,y_score,average='macro')
-        if best_f1 <= f1:
-            best_f1 = f1
-            best_eval = [precision, recall, f1]
-            best_auc = roauc
-            print(best_auc)
-    print(best_eval)
-    return best_eval, best_auc
-
-def train_epoch(train_iter, test_iter, targetBase,params):
-    features_traget = []
-    y_t = []
-    features_test = []
-    y_test = []
-    loop = tqdm(train_iter, desc="target")
-
-    for X, y in loop:
-        y_t.append(y.numpy())
-        X, y = X.to(device), y.to(device)
-        f = targetBase(X)
-        features_traget.append(f.to('cpu').detach().numpy())
-    
-    loop = tqdm(test_iter, desc="test")
-
-    for X, y in loop:
-        y_test.append(y.numpy())
-        X, y = X.to(device), y.to(device)
-        f = targetBase(X)
-        features_test.append(f.to('cpu').detach().numpy())
-    
-    features_traget = np.vstack(features_traget)
-    features_test = np.vstack(features_test)
-    y_t = np.vstack(y_t)
-    y_test = np.vstack(y_test)
-    return kNN_accuracy(features_traget, y_t, features_test, y_test, params)
-
 def fintuning(target_iter, targetModel, clsLayer, taskLayer, loss, optimizer, params): 
     accmulator = d2l.Accumulator(4)
     loop = tqdm(target_iter, desc="traintgt")
@@ -97,12 +43,9 @@ def fintuning(target_iter, targetModel, clsLayer, taskLayer, loss, optimizer, pa
         f_t = targetModel(X_t)
 
         disLabel = clsLayer(f_t)
-        # predictopen = taskLayer(f_t)
-        # label = torch.ones(disLabel.shape[0], dtype=torch.long).to(params["device"])
 
         optimizer.zero_grad()
         l_tgt = loss(disLabel, y)
-        # l_tgt += loss(predictopen, openlabel)
         l_tgt.backward()
         optimizer.step()
         accmulator.add((l_tgt) * X_t.shape[0], X_t.shape[0], accurate(disLabel, y) , y.shape[0])
@@ -116,8 +59,6 @@ def test(test_iter, targetModel, clsLayer, loss):
     y_pred = []
     for X_t, y, openlabel in loop:
         X_t, y = X_t.to(params["device"]), y.to(params["device"])
-        # label = torch.ones(disLabel.shape[0], dtype=torch.long).to(params["device"])
-        # print(y.shape)
         with torch.no_grad():
             f_t = targetModel(X_t)
             disLabel = clsLayer(f_t)
@@ -226,51 +167,33 @@ params['device'] = device
 '''
 closedataset
 '''
-# params['target_close_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/target_processed/WF15.npz"
-# params['target_close_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/AWF/AWF20.npz"
-params['target_close_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/DFDataset/DF95_sampled5.npz"
-# params['target_close_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/WangDataset/Wang100_sampled20.npz"
-# params['target_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/AFDataset/AF100_sampled20.npz"
+params['target_close_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/DFDataset/WF90_sampled5.npz"
 '''
 opendataset
 '''
-# params['target_open_data'] = "/home/siyuwang/pythoncode/TranferLearning/openDataset/target_openprocessed/WFopen2000.npz"
-# params['target_open_data'] = "/home/siyuwang/pythoncode/TranferLearning/openDataset/AWFopenDataset/AWFopen2000.npz"
-# params['target_open_data'] = "/home/siyuwang/pythoncode/TranferLearning/openDataset/WangopenDataset/Wang_sampled2000.npz"
-params['target_open_data'] = "/home/siyuwang/pythoncode/TranferLearning/openDataset/DFopenDataset/DF_sampled500.npz"
+params['target_open_data'] = "/home/siyuwang/pythoncode/TranferLearning/openDataset/DFopenDataset/WF_sampled500.npz"
 
 '''
 testclose
 '''
-# params['test_close_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/target_test/WF_test.npz"
-# params['test_close_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/target_test/AWF_test.npz"
-params['test_close_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/target_test/DF95_sampled70.npz"
-# params['test_close_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/target_test/Wang100_sampled70.npz"
-# params['test_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/target_test/AF100_sampled70.npz"
+params['test_close_data'] = "/home/siyuwang/pythoncode/TranferLearning/Dataset/target_test/WF90_sampled70.npz"
 '''
 testopen
 '''
-# params['test_open_data'] = "/home/siyuwang/pythoncode/TranferLearning/openDataset/target_opentest/WF_opentest.npz"
-# params['test_open_data'] = "/home/siyuwang/pythoncode/TranferLearning/openDataset/LargeOpen/AWFopen50000.npz"
-params['test_open_data'] = "/home/siyuwang/pythoncode/TranferLearning/openDataset/target_opentest/DF_sampled7000.npz"
-# params['test_open_data'] = "/home/siyuwang/pythoncode/TranferLearning/openDataset/target_opentest/Wang_sampled7000.npz"
+params['test_open_data'] = "/home/siyuwang/pythoncode/TranferLearning/openDataset/target_opentest/WF_sampled7000.npz"
 
 train_iter = dataLoaderSource(params["target_close_data"],params['target_open_data'], 128)
 train_iter_close = dataLoadercloseSource(params["target_close_data"], 128)
 test_iter = dataLoaderSource(params["test_close_data"], params['test_open_data'],128)
 
 
-#训练
+#train setting
 params["target_model"] = "/home/siyuwang/pythoncode/TranferLearning/targetBestSEModel.pth"
-# params["target_model"] = "/home/siyuwang/pythoncode/TranferLearning/Best_model/netCLR/NetCLR_epoch_400.pth"
-# params["target_model"] = "/home/siyuwang/pythoncode/TranferLearning/Best_model/TF/bestbase.pth"
-# params["target_model"] = "/home/siyuwang/pythoncode/TranferLearning/Best_model/TF/bestbase_open.pth"
-# params["target_model"] = "/home/siyuwang/pythoncode/TranferLearning/Best_model/souce_train/bestBase75.pth"
 params["saveBasepath"] = "targetBestModelBase_open.pth"
 params['saveClspath'] = "cls_open.pth"
-# params["saveClspath"] = "targetBestModelCls.pth"
-params['epoch'] = 70
-params['numclass'] = 96
+
+params['epoch'] = 80
+params['numclass'] = 91
 acc_list = []
 auc_list = []
 for i in range(0, 1):
