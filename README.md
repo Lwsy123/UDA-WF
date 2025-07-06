@@ -30,4 +30,5 @@ UDA-WF code/
 └── evaluation.py                # fine-tuning target model in open-world.
 
 ~~~
+Our model significantly improves deployment efficiency. Our UDA-WF uses the unsupervised softmatch domain adaptation method to overcome the cross-domain problem while reducing auxiliary data requirements by 95% and pre-training bootstrap time by 99% compared to the State-Of-The-Art (SOTA) methods.
 
