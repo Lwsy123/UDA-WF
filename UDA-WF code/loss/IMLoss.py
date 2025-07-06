@@ -14,15 +14,14 @@ class IMLoss(nn.Module):
 
     def forward(self, y_pred, K):
         '''
-        K ：源域类别
+        K ：the class of source domain dataset
         '''
         softmax_out = F.softmax(y_pred, dim = -1)
 
         l_ent = torch.mean(Entropy(softmax_out))
-        msoftmax = softmax_out.mean(dim=0) #根据列求平均
+        msoftmax = softmax_out.mean(dim=0) 
         l_div = torch.sum(msoftmax  * torch.log((msoftmax + 1e-6)*K))
 
-        # im_loss =  l_ent - l_div
         im_loss = l_ent + l_div
 
         return im_loss
