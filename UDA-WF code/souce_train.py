@@ -5,7 +5,6 @@ from torch.nn import functional as F
 from loss.smoothCrossEntropy import smoothCrossEntropy
 from tqdm import tqdm
 from network.DFnet import DFnetBase, DFnetcls
-# from network.newDFnet import DFnetBase, DFnetcls
 from d2l import torch as d2l
 from utils.util import accurate
 import os
@@ -57,11 +56,6 @@ def test_epoch(test_iter, netBase, netCls, loss, device):
     print(feature.shape, labels.shape)
 
     np.savez("./source_features", feature = feature, label = labels)
-
-
-            
-        #l.backward()
-        #optimizer.step()
         
         
 
@@ -72,15 +66,15 @@ def train(train_iter, epochnum, lr, device, num):
     netCls = DFnetcls(100)
 
     param_group = []
-    for k, v in netBase.named_parameters(): # 获取netBase的参数
+    for k, v in netBase.named_parameters(): # parameters of netBase
         param_group.append({'params':v, 'lr':lr})
 
-    for k, v in netCls.named_parameters(): # 获取netCls的参数
+    for k, v in netCls.named_parameters(): # parameters of netCls
         param_group.append({'params':v, 'lr':lr})
     
     max_acc = 0
-    optimizer = torch.optim.Adam(param_group) #使用Adam优化器
-    loss = smoothCrossEntropy() # 平滑交叉熵
+    optimizer = torch.optim.Adam(param_group) 
+    loss = smoothCrossEntropy()
     
     # 将模型导入GPU
     netBase.to(device)
@@ -101,22 +95,6 @@ def train(train_iter, epochnum, lr, device, num):
         train_epoch(epochname, train_iter, netBase, netCls, optimizer, loss, device)
         torch.save(netBase.state_dict(), pathBase)
         torch.save(netCls.state_dict(), pathCls)
-        # netBase.
-        # TODO(WSY) : Done
-
-        # acc = test_epoch(test_iter, netBase, netCls, loss, device)
-
-        # if max_acc <= acc :
-
-        #     filelists = os.listdir(path)
-        #     if filelists != None:
-        #         for file in filelists:
-        #             os.remove(path + file)
-        #     torch.save(netBase.state_dict(), pathBase)
-        #     torch.save(netCls.state_dict(), pathCls)
-
-        #     max_acc = acc
-    # test_epoch(train_iter, netBase, netCls, loss, device)
 
 def weights_init(m):
     if type(m) == nn.Conv1d:
