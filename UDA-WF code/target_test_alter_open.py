@@ -4,17 +4,13 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import numpy
-from network.AE import AutoEncoder
 from network.DFnet import DFnetBase, DFnetcls
-# from network.DFnet_trpil import DFnetBase, DFnetcls
-# from network.DFnet_CLR import DFnetBase, DFCLs
 from loss import ADDALoss, crossEntropy
 from tqdm import tqdm
 from d2l import torch as d2l
 import numpy as np
 from torch.utils import data
 from torch.utils.data import Dataset
-from network.cosineLinear import CosineLinear
 from utils.datasetLoader import DatastLoader
 from utils.util import accurate
 import os
@@ -31,27 +27,16 @@ warnings.filterwarnings("ignore")
 
 def load_data(feature, label): #数据生成
     '''
-    返回值: 数据生成器, 原始数据
+    dataset generator
     '''
-    # sourcepath = params["source_data"]
-
-    # source_data = np.load(sourcepath)
-    # source = source_data['x'].reshape(-1, 1, 5000)
     target = torch.tensor(feature, dtype=torch.float32).reshape(-1, 256)
     label = torch.tensor(label, dtype=torch.float32)
-    # source = DatastLoader(source)
     targetDataset =  data.TensorDataset(target, label)
 
     return data.DataLoader(targetDataset, shuffle=True, batch_size=128, drop_last=True)
 
 
 def kNN_train(X_train, y_train,params,n_num = 1):
-    # print('kNN training data shape: ', X_train.shape)
-    # knn = RandomForestClassifier(criterion='gini',n_estimators=25,random_state=1,verbose=1, n_jobs=-1)
-    # knn = OneVsRestClassifier(KNeighborsClassifier(n_neighbors=n_num,algorithm='auto',weights='distance'), n_jobs=-1)
-    # knn = GradientBoostingClassifier(random_state=10)
-    # knn = AdaBoostClassifier(estimator=KNeighborsClassifier(n_neighbors=n_num,algorithm='auto',weights='distance'))
-    # knn = XGBClassifier()
     knn = KNeighborsClassifier(n_neighbors=n_num,algorithm='auto',weights='distance')
     knn.fit(X_train, y_train)
 
@@ -64,62 +49,20 @@ def kNN_accuracy(X_train, y_train, X_test, y_test, params):
     best_eval = None
     best_f1 = 0
     best_auc = 0
-    # if len(y_train.shape) == 2:
-    #     y_train_knn = np.argwhere(y_train==1)[:, 1].reshape(-1)
-    #     y_test_knn = np.argwhere(y_test == 1)[:, 1].reshape(-1)
     for i in range(1,5):
         knnModel = kNN_train(X_train, y_train, params, i)
-        # print(y_test.shape)
-        # Top-1
-        # print(knnModel.predict(X_test))
         precision,recall,f1 =  evluation(knnModel.predict(X_test), y_test)
-        
-        # score = knnModel.predict_proba(X_test)
         y_score = knnModel.predict(X_test)
-        # print(y_score)
-        # scores = []
-        # for score in y_score:
-        #     scores.append(score[:,1])
-        # scores = np.vstack(scores).reshape(-1,96)
-        # print(score[0])
-        # print(precision, recall, f1)
         roauc = roc_auc_score(y_test,y_score,average='macro')
-        # if roauc >= best_auc:
-        #     best_f1 = f1
-        #     best_eval = [precision, recall, f1]
-        #     # p,r,_ = precision_recall_curve(y_test_knn.ravel(),score.ravel())
-        #     best_auc = roauc
-        #     print(best_auc)
         if best_f1 <= f1:
             best_f1 = f1
             best_eval = [precision, recall, f1]
-            
-            # p,r,_ = precision_recall_curve(y_test_knn.ravel(),score.ravel())
             best_auc = roauc
             print(best_auc)
-            # print(p,r)
-            # print(precision, recall)
-
-        # acc_knn = accuracy_score(y_test, knnModel.predict(X_test))
-        # p = precision_score(y_test, knnModel.predict(X_test), average="macro")
-        # r = recall_score(y_test, knnModel.predict(X_test), average="macro")
-        # f = f1_score(y_test, knnModel.predict(X_test), average="macro")
-        # print(p, r, f)
-        # print(acc_knn)
-        # acc_knn = float("{0:.15f}".format(round(acc_knn, 6)))
-    # print(acc_knn)
-        # acc.append(acc_knn)
-    # print(acc)
     print(best_eval)
-
-    
-    # # Top-5
-    # acc_knn_top5 = computeTopN(5, knnModel, X_test, y_test)
-    # print('KNN accuracy Top1 = ', acc_knn_top1, '\tKNN accuracy Top5 = ', acc_knn_top5)
-    # return acc_knn_top1, acc_knn_top5
     return best_eval, best_auc
 
-def train_epoch(train_iter, test_iter, targetBase,params): # 测试KNN模型
+def train_epoch(train_iter, test_iter, targetBase,params):
     features_traget = []
     y_t = []
     features_test = []
@@ -166,7 +109,7 @@ def fintuning(target_iter, targetModel, clsLayer, taskLayer, loss, optimizer, pa
 
         loop.set_postfix(loss = accmulator[0]/ accmulator[1], acc = accmulator[2]/ accmulator[3])
 
-def test(test_iter, targetModel, clsLayer, loss): # 测试MLP的模
+def test(test_iter, targetModel, clsLayer, loss):
     accmulator = d2l.Accumulator(4)
     loop = tqdm(test_iter, desc="test")
     label = []
@@ -206,7 +149,7 @@ def train(params, train_iter_close, train_iter, test_iter, lr):
     clsLayer.apply(weights_init)
     taskLayer.to(params["device"])
     param_group = []
-    for k, v in targetModel.named_parameters(): # 获取netBase的参数
+    for k, v in targetModel.named_parameters():
         param_group.append({'params':v, 'lr':lr})
     for k, v in clsLayer.named_parameters():
         param_group.append({'params':v, 'lr':lr })
@@ -244,7 +187,7 @@ def train(params, train_iter_close, train_iter, test_iter, lr):
         nn.LazyLinear(2, bias=False)
     )
     param_group = []
-    for k, v in targetModel.named_parameters(): # 获取netBase的参数
+    for k, v in targetModel.named_parameters():
         param_group.append({'params':v, 'lr':lr*0.1})
     for k, v in clsLayer.named_parameters():
         param_group.append({'params':v, 'lr':lr*0.01 })
