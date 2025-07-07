@@ -11,7 +11,7 @@ UDA-WF code/
 │
 ├── loss/   
 │   ├── IMLoss.py                # IMLoss = KL-divergence + Entropy of one element.
-│   ├── SmoothCrossEntropy.py    # used in the source model training process to relieve "long-tail distribution".
+│   ├── SmoothCrossEntropy.py    # used in the source model training process to relieve the effect of "long-tail distribution".
 │   └── weightedCrossEntropy.py  # calculating the cross-entropy between pseudo-label and predicted label,
 │                                  and optimizing the cross-entropy by pseudo-label weights.
 ├── network/
